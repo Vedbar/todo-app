@@ -1,1 +1,1 @@
-This app is to create a to do list based on its priority.
+This app is to create a todo list based on priority.
