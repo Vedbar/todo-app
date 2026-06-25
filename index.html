@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Todo Lists</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      color: #1a1a2e;
+    }
+
+    .app { max-width: 960px; margin: 0 auto; padding: 32px 16px 80px; }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    h1 { font-size: 1.85rem; font-weight: 700; }
+
+    /* Stats */
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat {
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      min-width: 90px;
+    }
+    .stat-number { font-size: 1.5rem; font-weight: 700; }
+    .stat-number.c-active   { color: #6c63ff; }
+    .stat-number.c-done     { color: #10b981; }
+    .stat-number.c-overdue  { color: #ef4444; }
+    .stat-label { font-size: 0.76rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* Controls */
+    .controls {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    .search-input:focus { border-color: #6c63ff; }
+    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .filter-group { display: flex; gap: 4px; }
+    .filter-btn {
+      padding: 6px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      background: none;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: #64748b;
+    }
+    .filter-btn.active { background: #6c63ff; border-color: #6c63ff; color: #fff; font-weight: 600; }
+    .sel {
+      padding: 6px 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      color: #475569;
+      outline: none;
+      cursor: pointer;
+      background: #fff;
+    }
+    .sel:focus { border-color: #6c63ff; }
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.84rem;
+      color: #64748b;
+      cursor: pointer;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* PI Groups */
+    .pi-group { margin-bottom: 20px; }
+    .pi-group-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-left: 4px solid #6c63ff;
+      margin-bottom: 10px;
+      background: #fff;
+      border-radius: 0 10px 10px 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .pi-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .pi-group-name { font-weight: 700; font-size: 0.95rem; }
+    .pi-group-count { font-size: 0.79rem; color: #94a3b8; }
+
+    /* Todo list */
+    .todo-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 16px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .todo-item.done { opacity: 0.5; }
+    .todo-item input[type="checkbox"] {
+      width: 17px; height: 17px;
+      accent-color: #6c63ff;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .todo-content { flex: 1; min-width: 0; }
+    .todo-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+    .todo-text { font-size: 0.95rem; font-weight: 500; word-break: break-word; }
+    .todo-item.done .todo-text { text-decoration: line-through; color: #94a3b8; }
+    .badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .badge {
+      font-size: 0.71rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .badge-due { background: #e2e8f0; color: #475569; }
+    .badge-due.overdue  { background: #fef2f2; color: #ef4444; }
+    .badge-due.due-soon { background: #fffbeb; color: #b45309; }
+    .todo-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 2px; }
+    .meta { font-size: 0.77rem; color: #94a3b8; }
+    .meta.note { color: #64748b; font-style: italic; }
+
+    .todo-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .act-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 3px 7px;
+      border-radius: 6px;
+      color: #cbd5e1;
+    }
+    .act-btn:hover { background: #f1f5f9; }
+    .act-btn.edit:hover  { color: #6c63ff; background: #f5f3ff; }
+    .act-btn.del:hover   { color: #ef4444; background: #fef2f2; }
+
+    /* Buttons */
+    .btn-primary {
+      padding: 10px 20px;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: #574fd6; }
+    .btn-secondary {
+      padding: 10px 20px;
+      background: none;
+      color: #64748b;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { border-color: #94a3b8; }
+    .btn-sm { padding: 8px 14px; font-size: 0.85rem; }
+    .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* Modal */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 16px;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+    .modal-head h2 { font-size: 1.15rem; font-weight: 700; }
+    .close-btn {
+      background: none; border: none;
+      font-size: 1.1rem; cursor: pointer;
+      color: #94a3b8; padding: 4px 8px; border-radius: 6px;
+    }
+    .close-btn:hover { color: #1a1a2e; background: #f1f5f9; }
+    .modal-body { padding: 18px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .modal-foot { display: flex; gap: 10px; justify-content: flex-end; padding: 0 24px 20px; }
+
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 0.84rem; font-weight: 600; color: #374151; }
+    .fg input[type="text"],
+    .fg input[type="date"],
+    .fg select,
+    .fg textarea {
+      padding: 9px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      font-family: inherit;
+      width: 100%;
+    }
+    .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: #6c63ff; }
+    .fg textarea { resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .err { font-size: 0.8rem; color: #ef4444; }
+
+    .pri-row { display: flex; gap: 8px; }
+    .pri-opt {
+      flex: 1;
+      padding: 8px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: none;
+      color: #64748b;
+    }
+
+    .empty {
+      text-align: center;
+      color: #94a3b8;
+      padding: 56px;
+      background: #fff;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { useState, useEffect, useRef } = React;
+    const h = React.createElement;
+
+    const PRI_COLOR  = { High: '#ef4444', Medium: '#f59e0b', Low: '#10b981' };
+    const PI_PALETTE = ['#6c63ff','#10b981','#f59e0b','#3b82f6','#ec4899','#8b5cf6','#14b8a6','#f97316','#06b6d4'];
+
+    const DEFAULT_TODOS = [
+      { id:1, text:'Literature review for ocean acidification study',  pi:'Dr. Smith',   dateStarted:'2026-06-01', dueDate:'2026-07-15', priority:'High',   done:false, notes:'Focus on 2020–2026 publications' },
+      { id:2, text:'Submit NSF grant proposal',                        pi:'Dr. Johnson', dateStarted:'2026-06-10', dueDate:'2026-06-30', priority:'High',   done:false, notes:'Budget section needs PI review' },
+      { id:3, text:'Analyze satellite imagery data',                   pi:'Dr. Johnson', dateStarted:'2026-06-05', dueDate:'2026-07-01', priority:'Medium', done:false, notes:'' },
+      { id:4, text:'Prepare AGU conference poster',                    pi:'Me',          dateStarted:'2026-06-15', dueDate:'2026-07-10', priority:'Medium', done:false, notes:'Abstract already accepted' },
+      { id:5, text:'Update personal research website',                 pi:'Me',          dateStarted:'2026-06-20', dueDate:'',           priority:'Low',    done:false, notes:'' },
+      { id:6, text:'Process coral reef survey data',                   pi:'Dr. Smith',   dateStarted:'2026-05-15', dueDate:'2026-06-20', priority:'Medium', done:true,  notes:'' },
+    ];
+
+    let _nextId = DEFAULT_TODOS.length + 1;
+
+    function todayStr() { return new Date().toISOString().slice(0,10); }
+
+    function fmtDate(d) {
+      if (!d) return '';
+      const [y,m,day] = d.split('-');
+      return m + '/' + day + '/' + y;
+    }
+
+    function piColor(pi, piList) {
+      const i = piList.indexOf(pi);
+      return PI_PALETTE[(i >= 0 ? i : 0) % PI_PALETTE.length];
+    }
+
+    function isOverdue(dueDate, done) {
+      return !!(dueDate && !done && dueDate < todayStr());
+    }
+
+    function isDueSoon(dueDate, done) {
+      if (!dueDate || done) return false;
+      const diff = (new Date(dueDate) - new Date()) / 86400000;
+      return diff >= 0 && diff <= 3;
+    }
+
+    /* ── TodoItem ─────────────────────────────────────────── */
+    function TodoItem({ todo, piList, onToggle, onDelete, onEdit }) {
+      const color   = piColor(todo.pi, piList);
+      const overdue = isOverdue(todo.dueDate, todo.done);
+      const soon    = isDueSoon(todo.dueDate, todo.done);
+
+      return h('li', { className: 'todo-item' + (todo.done ? ' done' : '') },
+        h('input', { type:'checkbox', checked: todo.done, onChange: () => onToggle(todo.id) }),
+        h('div', { className:'todo-content' },
+          h('div', { className:'todo-main' },
+            h('span', { className:'todo-text' }, todo.text),
+            h('div', { className:'badges' },
+              h('span', { className:'badge', style:{ background: color } }, todo.pi),
+              h('span', { className:'badge', style:{ background: PRI_COLOR[todo.priority] } }, todo.priority),
+              todo.dueDate
+                ? h('span', { className:'badge badge-due' + (overdue ? ' overdue' : soon ? ' due-soon' : '') },
+                    (overdue ? '⚠ ' : '') + 'Due ' + fmtDate(todo.dueDate))
+                : null,
+            )
+          ),
+          h('div', { className:'todo-meta' },
+            h('span', { className:'meta' }, 'Started: ' + fmtDate(todo.dateStarted)),
+            todo.notes ? h('span', { className:'meta note' }, '📝 ' + todo.notes) : null,
+          )
+        ),
+        h('div', { className:'todo-actions' },
+          h('button', { className:'act-btn edit', onClick: () => onEdit(todo), title:'Edit' }, '✎'),
+          h('button', { className:'act-btn del',  onClick: () => onDelete(todo.id), title:'Delete' }, '✕'),
+        )
+      );
+    }
+
+    /* ── AddEditModal ─────────────────────────────────────── */
+    function Modal({ todo, piList, onSave, onClose }) {
+      const isEdit = !!todo;
+      const defPi  = piList.includes('Me') ? 'Me' : (piList[0] || 'Me');
+
+      const [text,        setText]        = useState(isEdit ? todo.text        : '');
+      const [pi,          setPi]          = useState(isEdit ? todo.pi          : defPi);
+      const [newPi,       setNewPi]       = useState('');
+      const [addingPi,    setAddingPi]    = useState(false);
+      const [dateStarted, setDateStarted] = useState(isEdit ? todo.dateStarted : todayStr());
+      const [dueDate,     setDueDate]     = useState(isEdit ? todo.dueDate     : '');
+      const [priority,    setPriority]    = useState(isEdit ? todo.priority    : 'Medium');
+      const [notes,       setNotes]       = useState(isEdit ? todo.notes       : '');
+      const [err,         setErr]         = useState('');
+
+      function save() {
+        if (!text.trim()) { setErr('Task name is required.'); return; }
+        const finalPi = addingPi ? (newPi.trim() || 'Me') : pi;
+        onSave({ ...(isEdit ? { id: todo.id, done: todo.done } : {}), text: text.trim(), pi: finalPi, dateStarted, dueDate, priority, notes: notes.trim() });
+      }
+
+      function onPiChange(e) {
+        if (e.target.value === '__new__') { setAddingPi(true); }
+        else { setAddingPi(false); setPi(e.target.value); }
+      }
+
+      return h('div', { className:'overlay', onClick: e => e.target === e.currentTarget && onClose() },
+        h('div', { className:'modal' },
+          h('div', { className:'modal-head' },
+            h('h2', null, isEdit ? 'Edit Task' : 'Add Task'),
+            h('button', { className:'close-btn', onClick: onClose }, '✕')
+          ),
+          h('div', { className:'modal-body' },
+            h('div', { className:'fg' },
+              h('label', null, 'Task *'),
+              h('input', { type:'text', value: text, autoFocus: true,
+                placeholder: 'Describe the task...',
+                onChange: e => { setText(e.target.value); setErr(''); },
+                onKeyDown: e => e.key === 'Enter' && save(),
+              }),
+              err ? h('span', { className:'err' }, err) : null,
+            ),
+            h('div', { className:'fg' },
+              h('label', null, 'PI / Owner'),
+              h('select', { value: addingPi ? '__new__' : pi, onChange: onPiChange },
+                piList.map(p => h('option', { key: p, value: p }, p)),
+                h('option', { value:'__new__' }, '+ Add new PI...')
+              ),
+              addingPi
+                ? h('input', { type:'text', value: newPi, onChange: e => setNewPi(e.target.value),
+                    placeholder: 'Enter PI name (e.g. Dr. Lee)', style:{ marginTop:'8px' } })
+                : null,
+            ),
+            h('div', { className:'form-row' },
+              h('div', { className:'fg' },
+                h('label', null, 'Date Started'),
+                h('input', { type:'date', value: dateStarted, onChange: e => setDateStarted(e.target.value) })
+              ),
+              h('div', { className:'fg' },
+                h('label', null, 'Due Date'),
+                h('input', { type:'date', value: dueDate, onChange: e => setDueDate(e.target.value) })
+              ),
+            ),
+            h('div', { className:'fg' },
+              h('label', null, 'Priority'),
+              h('div', { className:'pri-row' },
+                ['High','Medium','Low'].map(p =>
+                  h('button', {
+                    key: p, type:'button',
+                    className: 'pri-opt',
+                    style: priority === p ? { background: PRI_COLOR[p], color:'#fff', borderColor: PRI_COLOR[p] } : {},
+                    onClick: () => setPriority(p),
+                  }, p)
+                )
+              )
+            ),
+            h('div', { className:'fg' },
+              h('label', null, 'Notes'),
+              h('textarea', { rows: 3, value: notes, onChange: e => setNotes(e.target.value),
+                placeholder: 'Optional notes, deadlines, or links...' })
+            ),
+          ),
+          h('div', { className:'modal-foot' },
+            h('button', { className:'btn-secondary', onClick: onClose }, 'Cancel'),
+            h('button', { className:'btn-primary',   onClick: save   }, isEdit ? 'Save Changes' : 'Add Task'),
+          )
+        )
+      );
+    }
+
+    /* ── App ──────────────────────────────────────────────── */
+    function App() {
+      const stored = (() => { try { const s = localStorage.getItem('myTodos'); return s ? JSON.parse(s) : null; } catch { return null; } })();
+      const [todos,       setTodos]       = useState(stored || DEFAULT_TODOS);
+      const [search,      setSearch]      = useState('');
+      const [filterPi,    setFilterPi]    = useState('All');
+      const [filterSt,    setFilterSt]    = useState('All');
+      const [filterPri,   setFilterPri]   = useState('All');
+      const [groupByPi,   setGroupByPi]   = useState(true);
+      const [sortBy,      setSortBy]      = useState('priority');
+      const [modalOpen,   setModalOpen]   = useState(false);
+      const [editTodo,    setEditTodo]    = useState(null);
+
+      useEffect(() => {
+        try { localStorage.setItem('myTodos', JSON.stringify(todos)); } catch {}
+      }, [todos]);
+
+      // Stable PI list — "Me" always first
+      const piList = Array.from(new Set(['Me', ...todos.map(t => t.pi)]));
+      const fileInputRef = useRef(null);
+
+      function exportTodos() {
+        const json = JSON.stringify(todos, null, 2);
+        const url  = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'todos-' + todayStr() + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function importTodos(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!Array.isArray(data)) throw new Error();
+            setTodos(data);
+            _nextId = Math.max(0, ...data.map(t => t.id)) + 1;
+          } catch {
+            alert('Could not import: file must be a valid todos JSON array.');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      }
+
+      function openAdd()       { setEditTodo(null);  setModalOpen(true); }
+      function openEdit(todo)  { setEditTodo(todo);  setModalOpen(true); }
+      function closeModal()    { setModalOpen(false); setEditTodo(null); }
+
+      function saveTodo(data) {
+        if (data.id) {
+          setTodos(prev => prev.map(t => t.id === data.id ? data : t));
+        } else {
+          setTodos(prev => [...prev, { ...data, id: _nextId++, done: false }]);
+        }
+        closeModal();
+      }
+
+      function toggleTodo(id) {
+        setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+      }
+
+      function deleteTodo(id) {
+        setTodos(prev => prev.filter(t => t.id !== id));
+      }
+
+      // Filter
+      const q = search.toLowerCase();
+      let filtered = todos.filter(t => {
+        if (q && !t.text.toLowerCase().includes(q) && !t.pi.toLowerCase().includes(q) && !t.notes.toLowerCase().includes(q)) return false;
+        if (filterPi  !== 'All' && t.pi       !== filterPi)  return false;
+        if (filterSt  === 'Active' && t.done)                 return false;
+        if (filterSt  === 'Done'   && !t.done)                return false;
+        if (filterPri !== 'All' && t.priority  !== filterPri) return false;
+        return true;
+      });
+
+      // Sort
+      const PRI_ORD = { High:0, Medium:1, Low:2 };
+      filtered = [...filtered].sort((a,b) => {
+        if (sortBy === 'priority') return PRI_ORD[a.priority] - PRI_ORD[b.priority];
+        if (sortBy === 'dueDate') {
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        }
+        return b.dateStarted.localeCompare(a.dateStarted);
+      });
+
+      // Stats
+      const total   = todos.length;
+      const active  = todos.filter(t => !t.done).length;
+      const done    = todos.filter(t =>  t.done).length;
+      const overdue = todos.filter(t => isOverdue(t.dueDate, t.done)).length;
+
+      // Render list (grouped or flat)
+      function renderList(items) {
+        if (items.length === 0) return h('div', { className:'empty' }, 'No tasks match your filters.');
+
+        if (!groupByPi) {
+          return h('ul', { className:'todo-list' },
+            items.map(t => h(TodoItem, { key: t.id, todo: t, piList, onToggle: toggleTodo, onDelete: deleteTodo, onEdit: openEdit }))
+          );
+        }
+
+        const groups = {};
+        piList.forEach(p => { groups[p] = []; });
+        items.forEach(t => { if (!groups[t.pi]) groups[t.pi] = []; groups[t.pi].push(t); });
+
+        return h('div', null,
+          piList.filter(p => groups[p] && groups[p].length > 0).map(p =>
+            h('div', { key: p, className:'pi-group' },
+              h('div', { className:'pi-group-header', style:{ borderLeftColor: piColor(p, piList) } },
+                h('span', { className:'pi-dot', style:{ background: piColor(p, piList) } }),
+                h('span', { className:'pi-group-name' }, p),
+                h('span', { className:'pi-group-count' }, groups[p].length + ' task' + (groups[p].length !== 1 ? 's' : ''))
+              ),
+              h('ul', { className:'todo-list' },
+                groups[p].map(t => h(TodoItem, { key: t.id, todo: t, piList, onToggle: toggleTodo, onDelete: deleteTodo, onEdit: openEdit }))
+              )
+            )
+          )
+        );
+      }
+
+      return h('div', { className:'app' },
+        h('div', { className:'header' },
+          h('h1', null, 'My Todo Lists'),
+          h('div', { className:'header-actions' },
+            h('input', { type:'file', accept:'.json', ref: fileInputRef, style:{ display:'none' }, onChange: importTodos }),
+            h('button', { className:'btn-secondary btn-sm', onClick: () => fileInputRef.current.click() }, '⬆ Import'),
+            h('button', { className:'btn-secondary btn-sm', onClick: exportTodos }, '⬇ Export'),
+            h('button', { className:'btn-primary',          onClick: openAdd      }, '+ Add Task'),
+          )
+        ),
+
+        h('div', { className:'stats-bar' },
+          h('div', { className:'stat' }, h('span', { className:'stat-number' }, total),   h('span', { className:'stat-label' }, 'Total')),
+          h('div', { className:'stat' }, h('span', { className:'stat-number c-active' }, active),  h('span', { className:'stat-label' }, 'Active')),
+          h('div', { className:'stat' }, h('span', { className:'stat-number c-done' },   done),    h('span', { className:'stat-label' }, 'Done')),
+          overdue > 0
+            ? h('div', { className:'stat' }, h('span', { className:'stat-number c-overdue' }, overdue), h('span', { className:'stat-label' }, 'Overdue'))
+            : null,
+        ),
+
+        h('div', { className:'controls' },
+          h('input', { className:'search-input', type:'text', value: search,
+            onChange: e => setSearch(e.target.value),
+            placeholder: 'Search tasks, PIs, or notes...' }),
+          h('div', { className:'filter-row' },
+            h('div', { className:'filter-group' },
+              ['All','Active','Done'].map(s =>
+                h('button', { key: s, className:'filter-btn' + (filterSt === s ? ' active' : ''), onClick: () => setFilterSt(s) }, s)
+              )
+            ),
+            h('select', { className:'sel', value: filterPri, onChange: e => setFilterPri(e.target.value) },
+              h('option', { value:'All' }, 'All Priorities'),
+              ['High','Medium','Low'].map(p => h('option', { key: p, value: p }, p))
+            ),
+            h('select', { className:'sel', value: filterPi, onChange: e => setFilterPi(e.target.value) },
+              h('option', { value:'All' }, 'All PIs'),
+              piList.map(p => h('option', { key: p, value: p }, p))
+            ),
+            h('select', { className:'sel', value: sortBy, onChange: e => setSortBy(e.target.value) },
+              h('option', { value:'priority'    }, 'Sort: Priority'),
+              h('option', { value:'dueDate'     }, 'Sort: Due Date'),
+              h('option', { value:'dateStarted' }, 'Sort: Date Started'),
+            ),
+            h('label', { className:'toggle-label' },
+              h('input', { type:'checkbox', checked: groupByPi, onChange: e => setGroupByPi(e.target.checked) }),
+              ' Group by PI'
+            ),
+          )
+        ),
+
+        renderList(filtered),
+
+        modalOpen
+          ? h(Modal, { todo: editTodo, piList, onSave: saveTodo, onClose: closeModal })
+          : null,
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(h(App, null));
+  </script>
+</body>
+</html>
